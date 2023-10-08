@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.usebootstrap.com/bootstrap/3.3.7/css/bootstrap.min.css"  />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.5.1/axios.min.js" integrity="sha512-emSwuKiMyYedRwflbZB2ghzX8Cw8fmNVgZ6yQNNXXagFzFOaQmbvQ1vmDkddHjm5AITcBIZfC7k4ShQSjgPAmQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <title>Document</title>
+</head>
+<body>
+    <div class="container-fluid">
+        <h1 class="row">Login</h1>
+        <main>
+            <div class="row">
+                <label for="username">Username</label>
+                <input type="text" name="username" id="username">
+            </div>
+
+            <div class="row">
+                <label for="password">password</label>
+                <input type="password" name="password" id="password">
+            </div>
+
+            <div>
+                <button onclick="login()">Login</button>
+                <button onclick="getDashboard()">Get Dashboard</button>
+                <button onclick="getSettings()">Get Settings</button>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+
+
+
+        const isTokenExpired = (token) => {
+            if(token == null) return false; 
+            const decodedJwt = JSON.parse(atob(token.split(".")[1]));
+            return decodedJwt.exp * 1000 < Date.now()  ? true : false;
+        }
+
+        const login = () => {
+            const data = {
+                username: document.getElementById("username").value,
+                password: document.getElementById("password").value,
+            };
+            axios.post('/api/login', data)
+                .then(res => {
+                    console.log(res);
+                    document.getElementById("username").value = '';
+                    document.getElementById("username").value = '';
+                    if(res && res.data && res.data.success) {
+                        const token = res.data.token;
+                        localStorage.setItem('jwt', token);
+                        getDashboard();
+                    }
+                })
+        }
+
+        const getDashboard = () => {
+            const token = localStorage.getItem('jwt');
+            console.log(token);
+            if(token == null || isTokenExpired(token)) {
+                history.pushState(null,null,"/");
+                console.log("Please login to view the dashboard page");
+            } else {
+                axios.get("/api/dashboard", {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+                }).then(res => {
+                    if(res && res.data && res.data.success) {
+                        document.querySelector('h1.row').innerHTML = 'Dashboard';
+                        document.querySelector('main').innerHTML = res.data.myContent;
+                        history.pushState({}, "", "dashboard");
+                    }
+                });
+            }
+            
+        }
+
+        const getSettings = () => {
+            const token = localStorage.getItem('jwt');
+            if(token ==null || isTokenExpired(token)) {
+                history.pushState(null,null,"/");
+                console.log("Please login to view the settings page");
+            } else {
+                axios.get("/api/settings", {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }).then(res => {
+                    if(res && res.data && res.data.success) {
+                        document.querySelector('h1.row').innerHTML = 'Settings';
+                        document.querySelector('main').innerHTML = res.data.myContent;
+                        history.pushState({}, "", "settings");
+
+                    }
+                });
+            }
+        }
+
+        window.addEventListener('popstate', () => {
+            console.log('User clicked back button');
+            history.back();
+            location.reload();
+        });
+
+        // window.onload = () => {
+        //     const token = localStorage.getItem('jwt');
+
+        //     if(token && !isTokenExpired(token)) {
+        //         getDashboard();
+        //     }
+        // }
+
+    </script>
+</body>
+</html>
+
